@@ -1,6 +1,7 @@
 # FIXED
 
 RTC.obj: ../RTC.c
+RTC.obj: ../RTC.h
 RTC.obj: /Users/joshuaaitken/workspace_v6_1_3/Security\ System/driverlib/msp432P4xx/driverlib.h
 RTC.obj: /Users/joshuaaitken/workspace_v6_1_3/Security\ System/driverlib/msp432P4xx/adc14.h
 RTC.obj: /Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include/stdint.h
@@ -46,8 +47,12 @@ RTC.obj: /Users/joshuaaitken/workspace_v6_1_3/Security\ System/driverlib/msp432P
 RTC.obj: /Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include/stdio.h
 RTC.obj: /Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include/linkage.h
 RTC.obj: /Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include/stdarg.h
+RTC.obj: /Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include/stddef.h
+RTC.obj: /Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include/stddef.h
+RTC.obj: ../setclockspeeds.h
 
 ../RTC.c: 
+../RTC.h: 
 /Users/joshuaaitken/workspace_v6_1_3/Security\ System/driverlib/msp432P4xx/driverlib.h: 
 /Users/joshuaaitken/workspace_v6_1_3/Security\ System/driverlib/msp432P4xx/adc14.h: 
 /Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include/stdint.h: 
@@ -93,3 +98,6 @@ RTC.obj: /Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include/st
 /Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include/stdio.h: 
 /Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include/linkage.h: 
 /Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include/stdarg.h: 
+/Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include/stddef.h: 
+/Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include/stddef.h: 
+../setclockspeeds.h: 

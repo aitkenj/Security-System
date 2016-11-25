@@ -8,10 +8,15 @@ GEN_OPTS__FLAG :=
 GEN_CMDS__FLAG := 
 
 ORDERED_OBJS += \
+"./Flash.obj" \
 "./Hall.obj" \
 "./Keypad.obj" \
+"./LCD.obj" \
 "./RTC.obj" \
+"./ST7735.obj" \
+"./i2c_bus.obj" \
 "./main.obj" \
+"./setclockspeeds.obj" \
 "./startup_msp432p401r_ccs.obj" \
 "./system_msp432p401r.obj" \
 "./driverlib/MSP432P4xx/adc14.obj" \
@@ -170,7 +175,7 @@ all: Security\ System.out
 Security\ System.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: MSP432 Linker'
-	"/Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/bin/armcl" -mv7M4 --code_state=16 --float_support=FPv4SPD16 -me --advice:power=all -g --gcc --define=__MSP432P401R__ --define=TARGET_IS_MSP432P4XX --define=ccs --display_error_number --diag_warning=225 --diag_wrap=off --abi=eabi -z -m"Security System.map" --heap_size=1024 --stack_size=512 -i"/Applications/ti/ccsv6/ccs_base/arm/include" -i"/Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/lib" -i"/Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include" --reread_libs --warn_sections --display_error_number --diag_wrap=off --xml_link_info="Security System_linkInfo.xml" --rom_model -o "Security System.out" $(ORDERED_OBJS)
+	"/Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/bin/armcl" -mv7M4 --code_state=16 --float_support=FPv4SPD16 -me --advice:power="all" -g --c99 --relaxed_ansi --gcc --define=__MSP432P401R__ --define=TARGET_IS_MSP432P4XX --define=ccs --display_error_number --diag_warning=225 --diag_wrap=off --abi=eabi -z -m"Security System.map" --heap_size=1024 --stack_size=512 -i"/Applications/ti/ccsv6/ccs_base/arm/include" -i"/Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/lib" -i"/Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include" --reread_libs --warn_sections --display_error_number --diag_wrap=off --xml_link_info="Security System_linkInfo.xml" --rom_model -o "Security System.out" $(ORDERED_OBJS)
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -183,8 +188,8 @@ Security\ System.hex: $(EXE_OUTPUTS)
 # Other Targets
 clean:
 	-$(RM) $(BIN_OUTPUTS__QUOTED)$(EXE_OUTPUTS__QUOTED)
-	-$(RM) "Hall.obj" "Keypad.obj" "RTC.obj" "main.obj" "startup_msp432p401r_ccs.obj" "system_msp432p401r.obj" "driverlib/MSP432P4xx/adc14.obj" "driverlib/MSP432P4xx/aes256.obj" "driverlib/MSP432P4xx/comp_e.obj" "driverlib/MSP432P4xx/cpu.obj" "driverlib/MSP432P4xx/crc32.obj" "driverlib/MSP432P4xx/cs.obj" "driverlib/MSP432P4xx/dma.obj" "driverlib/MSP432P4xx/flash.obj" "driverlib/MSP432P4xx/fpu.obj" "driverlib/MSP432P4xx/gpio.obj" "driverlib/MSP432P4xx/i2c.obj" "driverlib/MSP432P4xx/interrupt.obj" "driverlib/MSP432P4xx/mpu.obj" "driverlib/MSP432P4xx/pcm.obj" "driverlib/MSP432P4xx/pmap.obj" "driverlib/MSP432P4xx/pss.obj" "driverlib/MSP432P4xx/ref_a.obj" "driverlib/MSP432P4xx/reset.obj" "driverlib/MSP432P4xx/rtc_c.obj" "driverlib/MSP432P4xx/spi.obj" "driverlib/MSP432P4xx/sysctl.obj" "driverlib/MSP432P4xx/systick.obj" "driverlib/MSP432P4xx/timer32.obj" "driverlib/MSP432P4xx/timer_a.obj" "driverlib/MSP432P4xx/uart.obj" "driverlib/MSP432P4xx/wdt_a.obj" 
-	-$(RM) "Hall.d" "Keypad.d" "RTC.d" "main.d" "startup_msp432p401r_ccs.d" "system_msp432p401r.d" "driverlib/MSP432P4xx/adc14.d" "driverlib/MSP432P4xx/aes256.d" "driverlib/MSP432P4xx/comp_e.d" "driverlib/MSP432P4xx/cpu.d" "driverlib/MSP432P4xx/crc32.d" "driverlib/MSP432P4xx/cs.d" "driverlib/MSP432P4xx/dma.d" "driverlib/MSP432P4xx/flash.d" "driverlib/MSP432P4xx/fpu.d" "driverlib/MSP432P4xx/gpio.d" "driverlib/MSP432P4xx/i2c.d" "driverlib/MSP432P4xx/interrupt.d" "driverlib/MSP432P4xx/mpu.d" "driverlib/MSP432P4xx/pcm.d" "driverlib/MSP432P4xx/pmap.d" "driverlib/MSP432P4xx/pss.d" "driverlib/MSP432P4xx/ref_a.d" "driverlib/MSP432P4xx/reset.d" "driverlib/MSP432P4xx/rtc_c.d" "driverlib/MSP432P4xx/spi.d" "driverlib/MSP432P4xx/sysctl.d" "driverlib/MSP432P4xx/systick.d" "driverlib/MSP432P4xx/timer32.d" "driverlib/MSP432P4xx/timer_a.d" "driverlib/MSP432P4xx/uart.d" "driverlib/MSP432P4xx/wdt_a.d" 
+	-$(RM) "Flash.obj" "Hall.obj" "Keypad.obj" "LCD.obj" "RTC.obj" "ST7735.obj" "i2c_bus.obj" "main.obj" "setclockspeeds.obj" "startup_msp432p401r_ccs.obj" "system_msp432p401r.obj" "driverlib/MSP432P4xx/adc14.obj" "driverlib/MSP432P4xx/aes256.obj" "driverlib/MSP432P4xx/comp_e.obj" "driverlib/MSP432P4xx/cpu.obj" "driverlib/MSP432P4xx/crc32.obj" "driverlib/MSP432P4xx/cs.obj" "driverlib/MSP432P4xx/dma.obj" "driverlib/MSP432P4xx/flash.obj" "driverlib/MSP432P4xx/fpu.obj" "driverlib/MSP432P4xx/gpio.obj" "driverlib/MSP432P4xx/i2c.obj" "driverlib/MSP432P4xx/interrupt.obj" "driverlib/MSP432P4xx/mpu.obj" "driverlib/MSP432P4xx/pcm.obj" "driverlib/MSP432P4xx/pmap.obj" "driverlib/MSP432P4xx/pss.obj" "driverlib/MSP432P4xx/ref_a.obj" "driverlib/MSP432P4xx/reset.obj" "driverlib/MSP432P4xx/rtc_c.obj" "driverlib/MSP432P4xx/spi.obj" "driverlib/MSP432P4xx/sysctl.obj" "driverlib/MSP432P4xx/systick.obj" "driverlib/MSP432P4xx/timer32.obj" "driverlib/MSP432P4xx/timer_a.obj" "driverlib/MSP432P4xx/uart.obj" "driverlib/MSP432P4xx/wdt_a.obj" 
+	-$(RM) "Flash.d" "Hall.d" "Keypad.d" "LCD.d" "RTC.d" "ST7735.d" "i2c_bus.d" "main.d" "setclockspeeds.d" "startup_msp432p401r_ccs.d" "system_msp432p401r.d" "driverlib/MSP432P4xx/adc14.d" "driverlib/MSP432P4xx/aes256.d" "driverlib/MSP432P4xx/comp_e.d" "driverlib/MSP432P4xx/cpu.d" "driverlib/MSP432P4xx/crc32.d" "driverlib/MSP432P4xx/cs.d" "driverlib/MSP432P4xx/dma.d" "driverlib/MSP432P4xx/flash.d" "driverlib/MSP432P4xx/fpu.d" "driverlib/MSP432P4xx/gpio.d" "driverlib/MSP432P4xx/i2c.d" "driverlib/MSP432P4xx/interrupt.d" "driverlib/MSP432P4xx/mpu.d" "driverlib/MSP432P4xx/pcm.d" "driverlib/MSP432P4xx/pmap.d" "driverlib/MSP432P4xx/pss.d" "driverlib/MSP432P4xx/ref_a.d" "driverlib/MSP432P4xx/reset.d" "driverlib/MSP432P4xx/rtc_c.d" "driverlib/MSP432P4xx/spi.d" "driverlib/MSP432P4xx/sysctl.d" "driverlib/MSP432P4xx/systick.d" "driverlib/MSP432P4xx/timer32.d" "driverlib/MSP432P4xx/timer_a.d" "driverlib/MSP432P4xx/uart.d" "driverlib/MSP432P4xx/wdt_a.d" 
 	-@echo 'Finished clean'
 	-@echo ' '
 

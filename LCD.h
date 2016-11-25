@@ -2,7 +2,7 @@
  * LCD.h
  * Written By: Joshua Aitken
  * Date Created: 11/14/2016
- * Date Last Modified: 11/14/2016
+ * Date Last Modified: 11/20/2016
  *
  * Requirements:
  */
@@ -31,5 +31,23 @@ void LCDFlashAlarm(uint8_t FlashSeconds);
 //This Reads and displays the time, date and temperature in a scrolling motion
 void LCDScrollDisplay(void);
 
+//Displays Main Menu selection
+void LCDMainMenu(void);
+
+//Displays Configuration menu selection for time, date, volume, sensors etc
+void LCDConfigurationMenu(void);
+
+//Displays Log page of prev. 5 alarm triggers
+void ViewAlarmEventLog(void);
+
+//Dislays Log page of prev. 5 arm/disarm events
+void ViewAlarmArmLog(void);
+
+//Helper function: Prints Log info of alarm trigger event
+//Params: Trigger = log string, [x,y] = cursor start, n = list index
+void LCDPrintTriggerLogEntry(const int Trigger, int x, int y, int n);
+
+//Helper function to ViewAlarmArmLog. Prints out last 5 arm/disarm events
+void LCDPrintAlarmArmLogEntry(const int FlashLogAddress,int x, int y, int n);
 
 #endif /* LCD_H_ */

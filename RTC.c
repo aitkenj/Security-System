@@ -1,267 +1,249 @@
 /*
  * RTC.c
- * Written By: Joshua Aitken
- * Date Created: 10/30/2016
- * Date Last Modified: 10/30/2016
+ * Written By: Chris Vanzomern
+ * Date Created: 11/20/2016
+ * Date Last Modified: 11/20/2016
  *
  * Requirements: -Pins 6.5, 6.4 are used for I2C
  * 				 -DCO clock is maintained at 24 MHz
  * 				 -Output prints to regular terminal
  */
 
+#include "RTC.h"
+
+#include <stddef.h>
 #include "driverlib.h"
-#include <stdio.h>
 
-void I2CInit(void); //Sets up I2C and assigns RTC slave address
-//Writes time input into RTC registers
-void RTCWrite(uint8_t Min, uint8_t Hour, uint8_t Date, uint8_t Month);
-void RTCReadTime(void); //Reads time from RTC registers into RTC_registers
-void RTCGet_Time(char Time[]); //Converts current time in RTC_registers from BCD to decimal & displays
-void RTCGet_Date(char Date[]); //Converts date in RTC_registers to weekday and numerical display
-float RTCGet_Temp(void); //Reads and displays temp in Celsius
+//#include "i2c_bus.h"
+#include "setclockspeeds.h"
 
-char Pin[10]; //Array of pincode chars for PinCode entry function
-uint8_t RTC_registers[19]; //Global array to store date/time bytes
+// format string used to convert between a struct rtc_time and a string
+#define RTC_FORMAT_STRING "%s, %04d-%02d-%02d %02d:%02d:%02d"
+
+// I2C address of the RTC
+#define RTC_DEVICE_ADDRESS 0x68
+
+// data addresses of the RTC
+#define RTC_MEM_CURRENT_TIME 0x00
+#define RTC_MEM_ALARM_1 0x07
+#define RTC_MEM_ALARM_2 0x0B
+#define RTC_MEM_CONTROL 0x0E
+#define RTC_MEM_STATUS 0x0F
+#define RTC_MEM_AGING_OFFSET 0x10
+#define RTC_MEM_TEMP 0x11
+
+#define RTC_CTRL_EOSC BIT(7)
+#define RTC_CTRL_BBSQW BIT(6)
+#define RTC_CTRL_CONV BIT(5)
+#define RTC_CTRL_INTCN BIT(2)
+#define RTC_CTRL_A2IE BIT(1)
+#define RTC_CTRL_A1IE BIT(0)
+
+#define RTC_STAT_OSF BIT(7)
+#define RTC_STAT_EN32KHZ BIT(3)
+#define RTC_STAT_BSY BIT(2)
+#define RTC_STAT_A2F BIT(1)
+#define RTC_STAT_A1F BIT(0)
+
+// Assume all dates are after the year 2000.
+// Nobody using this is a time traveler.
+#define RTC_STARTING_YEAR 2000
 
 
-float RTCGet_Temp(void){
-    // Set Master in transmit mode
-    	MAP_I2C_setMode(EUSCI_B1_BASE, EUSCI_B_I2C_TRANSMIT_MODE);
-	// Wait for bus release
-    	while (MAP_I2C_isBusBusy(EUSCI_B1_BASE));
-    	//Set pointer to temp registers
-    	I2C_masterSendSingleByte(EUSCI_B1_BASE,0x11);
-    	// Wait for bus release
-    	while (MAP_I2C_isBusBusy(EUSCI_B1_BASE));
-    	// Set Master in receive mode
-    	MAP_I2C_setMode(EUSCI_B1_BASE, EUSCI_B_I2C_RECEIVE_MODE);
-    	// Wait for bus release, ready to receive
-    	while (MAP_I2C_isBusBusy(EUSCI_B1_BASE));
-    	// read from RTC registers (pointer auto increments after each read)
-    	RTC_registers[17]=MAP_I2C_masterReceiveSingleByte(EUSCI_B1_BASE); //integer
-    	RTC_registers[18]=MAP_I2C_masterReceiveSingleByte(EUSCI_B1_BASE); //fraction
-    	while( I2C_masterIsStopSent(EUSCI_B1_BASE) == EUSCI_B_I2C_SENDING_STOP);
+// The RTC uses binary-coded decimal.
+// This format has no benefit on the
+// system we're using, and it breaks
+// even the simplest math.
+// All dates and times used on the
+// microcontroller should use the
+// mathematically correct format,
+// while anything sent to the RTC
+// uses BCD.
+int to_number(int packed_bcd)
+{
+	int num = 0;
+	int decimal_place = 1;
 
-	float TempC = (float)(0x7F & RTC_registers[17]) + (float)(RTC_registers[18]>>6)*0.25;
-	if( RTC_registers[17] & 0x80 ){
-			TempC *= -1;
+	while(packed_bcd)
+	{
+		num += decimal_place * (packed_bcd % 0x10);
+		packed_bcd /= 0x10;
+		decimal_place *= 10;
 	}
-	return TempC;
+
+	return num;
+}
+
+int to_packed_bcd(int num)
+{
+	int bcd = 0;
+	int hexadecimal_place = 0x1;
+
+	while(num)
+	{
+		bcd += hexadecimal_place * (num % 10);
+		num /= 10;
+		hexadecimal_place *= 0x10;
+	}
+
+	return bcd;
 }
 
 
-void RTCGet_Date(char Date[]){
-	uint8_t NumDay = RTC_registers[3]; //convert BCD to Dec
-	uint8_t NumDate = ((RTC_registers[4] & 0x30)>>4)*10 + (RTC_registers[4] & 0x0F); //convert BCD to Dec
-	uint8_t NumMonth = ((RTC_registers[5] & 0x10)>>4)*10 + (RTC_registers[5] & 0x0F); //convert BCD to Dec
-	uint8_t NumYear = ((RTC_registers[6] & 0xF0)>>4)*10 + (RTC_registers[6] & 0x0F);  //convert BCD to Dec
+// Day names for pretty printing.
+// Element 0 is not actually used.
+char const * const rtc_day_name[8] = {
+		"BAD_TIME",
+		"Sunday",
+		"Monday",
+		"Tuesday",
+		"Wednesday",
+		"Thursday",
+		"Friday",
+		"Saturday"
+};
 
-	int i = 0;
-	switch(NumDay){ //Weekdays 1-7
-		case 1:
-			Date[0] = 'M';
-			Date[1] = 'o';
-			Date[2] = 'n';
-			Date[3] = 'd';
-			Date[4] = 'a';
-			Date[5] = 'y';
-			i = 6;
-			break;
-		case 2:
-			Date[0] = 'T';
-			Date[1] = 'u';
-			Date[2] = 'e';
-			Date[3] = 's';
-			Date[4] = 'd';
-			Date[5] = 'a';
-			Date[6] = 'y';
-			i = 7;
-			break;
-		case 3:
-			Date[0] = 'W';
-			Date[1] = 'e';
-			Date[2] = 'd';
-			Date[3] = 'n';
-			Date[4] = 'e';
-			Date[5] = 's';
-			Date[6] = 'd';
-			Date[7] = 'a';
-			Date[8] = 'y';
-			i = 9;
-			break;
-		case 4:
-			Date[0] = 'T';
-			Date[1] = 'h';
-			Date[2] = 'u';
-			Date[3] = 'r';
-			Date[4] = 's';
-			Date[5] = 'd';
-			Date[6] = 'a';
-			Date[7] = 'y';
-			i = 8;
-			break;
-		case 5:
-			Date[0] = 'F';
-			Date[1] = 'r';
-			Date[2] = 'i';
-			Date[3] = 'd';
-			Date[4] = 'a';
-			Date[5] = 'y';
-			i = 6;
-			break;
-		case 6:
-			Date[0] = 'S';
-			Date[1] = 'a';
-			Date[2] = 't';
-			Date[3] = 'u';
-			Date[4] = 'r';
-			Date[5] = 'd';
-			Date[6] = 'a';
-			Date[7] = 'y';
-			i = 8;
-			break;
-		case 7:
-			Date[0] = 'S';
-			Date[1] = 'u';
-			Date[2] = 'n';
-			Date[3] = 'd';
-			Date[4] = 'a';
-			Date[5] = 'y';
-			i = 6;
-			break;
-	}
 
-	Date[(i++)] = ' ';
-	Date[(i++)] = NumMonth/10 + 48;
-	Date[(i++)] = NumMonth%10 + 48;
-	Date[(i++)] = '/';
-	Date[(i++)] = NumDate/10 + 48;
-	Date[(i++)] = NumDate%10 + 48;
-	Date[(i++)] = '/';
-	Date[(i++)] = NumYear/10 + 48;
-	Date[(i++)] = NumYear%10 + 48;
-}
-
-//Displays Current Time/Date
-//Time param. must have length >= 9
-void RTCGet_Time(char Time[]){
-	char Period; //AM or PM
-	uint8_t Seconds = ((RTC_registers[0] & 0x70)>>4)*10 + (RTC_registers[0] & 0x0F); //convert BCD to Dec
-	uint8_t Minutes = ((RTC_registers[1] & 0x70)>>4)*10 + (RTC_registers[1] & 0x0F); //convert BCD to Dec
-	uint8_t Hours = 0; //
-
-	if( RTC_registers[2] & BIT6 ){
-			Hours = RTC_registers[2] & 0x0F; //convert BCD to Dec
-			if( RTC_registers[2] & BIT5){ Period = 'P'; } //if 1, PM
-			else{ Period = 'A';} //if 0 , AM
-	}
-	else{
-		//convert BCD to Dec
-		Hours = ((RTC_registers[2] & BIT5)>>5)*20 + ((RTC_registers[2] & BIT4)>>4)*10 + (RTC_registers[2] & 0x0F);
-	}
-
-	//Assign RTC read parameters into result char array
-	Time[0] = Hours/10 + 48; //tens hr unit
-	Time[1] = Hours%10 + 48; //1s hr unit
-	Time[2] = ':';
-	Time[3] = Minutes/10 + 48; //tens min unit
-	Time[4] = Minutes%10 + 48; //1s min unit
-	Time[5] = ':';
-	Time[6] = Seconds/10 + 48; //10s secs unit
-	Time[7] = Seconds%10 + 48; //1s secs unit
-	Time[8] = NULL;
-}
-
-//Uses SMCLK and assigns to DCO freq. of 24 MHz, may affect other programs
-void I2CInit(void){
-	MAP_CS_setDCOCenteredFrequency(CS_DCO_FREQUENCY_24); //Set to 24MHz
-	//Initialize clock signal
-	CS_initClockSignal(CS_SMCLK, CS_DCOCLK_SELECT, CS_CLOCK_DIVIDER_1);
-	//Set up struct param to configure I2C
-	eUSCI_I2C_MasterConfig ConfigI2C = {
-			EUSCI_B_I2C_CLOCKSOURCE_SMCLK,
-			24000000,
-			EUSCI_B_I2C_SET_DATA_RATE_100KBPS,
-			1,
-			EUSCI_B_I2C_NO_AUTO_STOP
-	};
-
-	//*I2C setup credit to Rob Bossemeyer
-	//Select Port6 for I2C with pins 4,5 as primary module
-	MAP_GPIO_setAsPeripheralModuleFunctionInputPin(GPIO_PORT_P6,
-	(GPIO_PIN4 | GPIO_PIN5), GPIO_PRIMARY_MODULE_FUNCTION);
-	//Enable pull-up resistor for SDA
-	P6REN |= BIT4;
-	P6OUT |= BIT4;
-	/* Initializing I2C Master */
-	MAP_I2C_initMaster(EUSCI_B1_BASE, &ConfigI2C);
-	   /* Specify slave address */
-	MAP_I2C_setSlaveAddress(EUSCI_B1_BASE, 0x68); //01101000
-	   /* Set Master in transmit mode */
-	MAP_I2C_setMode(EUSCI_B1_BASE, EUSCI_B_I2C_TRANSMIT_MODE);
-	   /* Enable I2C Module to start operations */
-	MAP_I2C_enableModule(EUSCI_B1_BASE);
+int rtc_time_is_believable(struct rtc_time *time)
+{
+	return (
+			time->year >= RTC_STARTING_YEAR && time->year < RTC_STARTING_YEAR + 200
+			&& time->month > 0 && time->month <= 12
+			&& time->date > 0 && time->date <= 31
+			&& time->day_of_week > 0 && time->day_of_week <= 7
+			&& time->hour >= 0 && time->hour < 24
+			&& time->min >= 0 && time->min < 60
+			&& time->sec >= 0 && time->sec < 60
+	);
 }
 
 
-//Writes 24h time/date into RTC registers
-void RTCWrite(uint8_t Min, uint8_t Hour, uint8_t Date, uint8_t Month){
+static uint8_t rtc_registers[19] = {0};
 
-	Min = (Min % 10) | ((Min / 10)<<4);
-	if( Hour > 23){
-		printf("Hours cannot exceed 24.\n");
-		return;
+
+// reads registers into shared variable
+// fails (returns 0) if i2c send or receive fails
+int rtc_read_registers()
+{
+	if(!i2c_send_single(RTC_DEVICE_ADDRESS, 0)) {return 0;}
+
+	if(!i2c_receive(RTC_DEVICE_ADDRESS, rtc_registers, 19)) {return 0;}
+
+	return 1;
+}
+
+// fails (returns 0) if rtc_read_registers() fails or if time is unbelievable
+int rtc_gettime(struct rtc_time *result)
+{
+	if(!rtc_read_registers())
+	{
+		return 0;
+		result->day_of_week = 0;
 	}
-	Hour = ((Hour / 20)<<5) | ((Hour/10) & 0x01)<<4 | (Hour % 10);
-	Date = ((Date / 10)<<4) | (Date % 10);
-	Month = ((Month / 10)<<4) | (Month % 10);
 
-	//Credited to Rob Bossemeyer
-	/* Set Master in transmit mode */
-	MAP_I2C_setMode(EUSCI_B1_BASE, EUSCI_B_I2C_TRANSMIT_MODE);
-	   // Wait for bus release, ready to write
-	while (MAP_I2C_isBusBusy(EUSCI_B1_BASE));
-	// set pointer to beginning of RTC registers
-	MAP_I2C_masterSendMultiByteStart(EUSCI_B1_BASE,0);
-	// and write to seconds register
-	MAP_I2C_masterSendMultiByteNext(EUSCI_B1_BASE,0);
-	// write to minutes register
-	MAP_I2C_masterSendMultiByteNext(EUSCI_B1_BASE, Min);
-	// write to hours register
-	MAP_I2C_masterSendMultiByteNext(EUSCI_B1_BASE, Hour);
-	// write to day register
-	MAP_I2C_masterSendMultiByteNext(EUSCI_B1_BASE, 1);
-	// write to date register
-	MAP_I2C_masterSendMultiByteNext(EUSCI_B1_BASE, Date);
-	// write to months register
-	MAP_I2C_masterSendMultiByteNext(EUSCI_B1_BASE, Month);
-	// write to year register and send stop
-	MAP_I2C_masterSendMultiByteFinish(EUSCI_B1_BASE, 0x16);
+	struct rtc_time tmp_result = {};
+
+	tmp_result.sec         = to_number(rtc_registers[0]);
+	tmp_result.min         = to_number(rtc_registers[1]);
+	tmp_result.hour        = to_number(rtc_registers[2]);
+	tmp_result.day_of_week = to_number(rtc_registers[3]);
+	tmp_result.date        = to_number(rtc_registers[4]);
+	tmp_result.month       = to_number(rtc_registers[5] & 0x1F);
+	// RTC year + starting year + century
+	tmp_result.year        = to_number(rtc_registers[6]) + RTC_STARTING_YEAR + (rtc_registers[5] >> 7);
+
+	memcpy(result, &tmp_result, sizeof(struct rtc_time));
+
+	if(rtc_time_is_believable(&tmp_result))
+	{
+		return 1;
+	}
+	else
+	{
+		result->day_of_week = 0;
+
+		return 0;
+	}
+}
+
+// fails (returns 0) if time is unbelievable or i2c_send() fails
+int rtc_settime(struct rtc_time *time)
+{
+	if(!rtc_time_is_believable(time))
+	{
+		return 0;
+	}
+
+	uint8_t sent[8] = {0};
+
+	int rtc_year = (time->year - RTC_STARTING_YEAR) % 100;
+	int rtc_century = (time->year - RTC_STARTING_YEAR) / 100;
+
+	sent[0] = RTC_MEM_CURRENT_TIME; // data location address
+	sent[1] = to_packed_bcd(time->sec);
+	sent[2] = to_packed_bcd(time->min);
+	sent[3] = to_packed_bcd(time->hour);
+	sent[4] = to_packed_bcd(time->day_of_week);
+	sent[5] = to_packed_bcd(time->date);
+	sent[6] = to_packed_bcd((rtc_century << 7) | time->month);
+	sent[7] = to_packed_bcd(rtc_year);
+
+	if(!i2c_send(RTC_DEVICE_ADDRESS, sent, 8)) {return 0;}
+
+	// first read after setting is always wrong...
+	rtc_read_registers();
+
+	return 1;
 }
 
 
-//Reads the current time from RTC registers into RTC_registers
-void RTCReadTime( void){
-	// Set Master in transmit mode
-	MAP_I2C_setMode(EUSCI_B1_BASE, EUSCI_B_I2C_TRANSMIT_MODE);
-	// Wait for bus release, ready to write
-	while (MAP_I2C_isBusBusy(EUSCI_B1_BASE));
-	// set pointer to beginning of RTC registers
-	//UCB1TXBUF = 1;
-	MAP_I2C_masterSendSingleByte(EUSCI_B1_BASE,0);
-	// Wait for bus release
-	while (MAP_I2C_isBusBusy(EUSCI_B1_BASE));
-	// Set Master in receive mode
-	MAP_I2C_setMode(EUSCI_B1_BASE, EUSCI_B_I2C_RECEIVE_MODE);
-	// Wait for bus release, ready to receive
-	while (MAP_I2C_isBusBusy(EUSCI_B1_BASE));
-	// read from RTC registers (pointer auto increments after each read)
-	RTC_registers[0]=MAP_I2C_masterReceiveSingleByte(EUSCI_B1_BASE); //seconds
-	RTC_registers[1]=MAP_I2C_masterReceiveSingleByte(EUSCI_B1_BASE); //minutes
-	RTC_registers[2]=MAP_I2C_masterReceiveSingleByte(EUSCI_B1_BASE); //hours
-	RTC_registers[3]=MAP_I2C_masterReceiveSingleByte(EUSCI_B1_BASE); //day
-	RTC_registers[4]=MAP_I2C_masterReceiveSingleByte(EUSCI_B1_BASE); //date
-	RTC_registers[5]=MAP_I2C_masterReceiveSingleByte(EUSCI_B1_BASE); //month/century
-	RTC_registers[6]=MAP_I2C_masterReceiveSingleByte(EUSCI_B1_BASE); //year
-	while( I2C_masterIsStopSent(EUSCI_B1_BASE) == EUSCI_B_I2C_SENDING_STOP);
+// this function is garbage...
+void rtc_gettemp(float* temperature)
+{
+	// receive control and status registers from RTC
+	rtc_read_registers();
+
+	// wait for the conversion to finish
+	while(rtc_registers[RTC_MEM_STATUS] & RTC_STAT_BSY)
+	{
+		rtc_read_registers();
+	}
+	rtc_read_registers();
+
+	// shift the temperature bits into the correct locations
+	int raw_temperature = (rtc_registers[RTC_MEM_TEMP] << 2) + (rtc_registers[RTC_MEM_TEMP + 1] >> 6);
+	// subtract the sign bit for negative numbers
+	raw_temperature -= (rtc_registers[RTC_MEM_TEMP] & 0x80 << 3);
+
+	*temperature = raw_temperature * 0.25;
+}
+
+
+void rtc_format(struct rtc_time *time, char* text_buf, size_t length)
+{
+	if(rtc_time_is_believable(time))
+	{
+		snprintf(
+				text_buf, length, RTC_FORMAT_STRING,
+				rtc_day_name[time->day_of_week],
+				time->year,
+				time->month,
+				time->date,
+				time->hour,
+				time->min,
+				time->sec);
+	}
+	else
+	{
+		snprintf(
+				text_buf, length, RTC_FORMAT_STRING,
+				rtc_day_name[0],
+				time->year,
+				time->month,
+				time->date,
+				time->hour,
+				time->min,
+				time->sec
+				);
+	}
 }

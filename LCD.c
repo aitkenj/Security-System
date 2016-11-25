@@ -2,7 +2,7 @@
  * LCD.c
  * Written By: Joshua Aitken
  * Date Created: 11/03/2016
- * Date Last Modified: 11/03/2016
+ * Date Last Modified: 11/23/2016
  *
  * Requirements:
  */
@@ -13,14 +13,20 @@
 #include "msp.h"
 #include "driverlib.h"
 #include "RTC.h"
+#include "Flash.h"
+#include "setclockspeeds.h"
 
 void LCDStartup(void);
 void SysTick_init(void);
-void SysTick_delay(uint16_t Delay_ms);
-void SetupClock48MHz(void);
 void LCDHome(uint16_t AlarmStatus, uint16_t DoorStatus, uint16_t AlarmEvent, char AlarmSource[], char Date[], char Day[]);
 void LCDFlashAlarm(uint8_t FlashSeconds);
 void LCDScrollDisplay(void);
+void LCDMainMenu(void);
+void LCDConfigurationMenu(void);
+void ViewAlarmEventLog(void);
+void ViewAlarmArmLog(void);
+void LCDPrintTriggerLogEntry(const int Trigger, int x, int y, int n);
+void LCDPrintAlarmArmLogEntry(const int FlashLogAddress,int x, int y, int n);
 
 
 const unsigned short GuardDog[] = {
@@ -1533,20 +1539,21 @@ const unsigned short Clouds[] = {
  0xDCCB, 0xD4CB, 0xDCCB, 0xDCEB, 0xDCEB, 0xDCEB, 0xDD0B, 0xDD0B, 0xDD0C, 0xDD0C, 0xDD0C, 0xDD0C, 0xDD0C, 0xDD2C, 0xDD2C, 0xDD2C,
 };
 
-void main(){
-	char Date[20];
-
-	SetupClock48MHz();
-	SysTick_init();
-	I2CInit();
-	LCDStartup();
-	ST7735_FillScreen(0);
-	RTCWrite(50, 11, 24, 11, 3);
-	RTCReadTime();
-	RTCGet_Date(Date);
-	ST7735_OutString(Date);
-	LCDScrollDisplay();
-}
+//void main(){
+//	char Date[20];
+//
+//	set_main_clocks();
+//	SysTick_init();
+//	I2CInit();
+//	LCDStartup();
+//	ST7735_FillScreen(0);
+////	RTCWrite(50, 11, 24, 11, 3);
+////	RTCReadTime();
+////	RTCGet_Date(Date);
+////	ST7735_OutString(Date);
+////	LCDScrollDisplay();
+//	ViewAlarmArmLog();
+//}
 
 void LCDHome(uint16_t AlarmStatus, uint16_t DoorStatus, uint16_t AlarmEvent, char AlarmSource[], char Date[], char Day[]){
 	ST7735_FillScreen(0);
@@ -1576,95 +1583,232 @@ void LCDHome(uint16_t AlarmStatus, uint16_t DoorStatus, uint16_t AlarmEvent, cha
 	}
 }
 
-void LCDScrollDisplay(void){
-	char ScrollLine[21];
-	char Time[8];
-	char Date[20];
-	float Temp;
-	int i = 0;
+//Displays Main Menu
+void LCDMainMenu(void){
+	ST7735_FillScreen(0);
+	ST7735_FillRect(0, 0, 128, 6, ST7735_WHITE);
+	ST7735_FillRect(0, 6, 6, 156, ST7735_WHITE);
+	ST7735_FillRect(122, 6, 6, 156, ST7735_WHITE);
+	ST7735_FillRect(6, 154, 116, 6, ST7735_WHITE);
+	ST7735_SetCursor(1,1);
+	ST7735_OutString("Main Menu");
+	ST7735_SetCursor(1,3);
+	ST7735_OutString("1: Configuration");
+	ST7735_SetCursor(1,5);
+	ST7735_OutString("2: Door Lock/Unlock");
+	ST7735_SetCursor(1,7);
+	ST7735_OutString("3: Alarm Event Log");
+	ST7735_SetCursor(1,9);
+	ST7735_OutString("4: Arm/Disarm Log");
+	ST7735_SetCursor(1,11);
+	ST7735_OutString("5: Sensor Status");
+}
 
-	RTCReadTime();
-	ST7735_FillScreen(0); //Fill bkgd black
-	ST7735_DrawBitmap(0,27,Clouds,128,28); //Draw clouds top
-	RTCGet_Time(Time); //Get current time
-	ST7735_SetCursor(0,3);
-	while( Time[i] != NULL){
-		ScrollLine[i] = Time[i];
-		i++;
+//Displays Configuration Menu
+void LCDConfigurationMenu(void){
+	ST7735_FillScreen(0);
+	ST7735_FillRect(0, 0, 128, 6, ST7735_WHITE);
+	ST7735_FillRect(0, 6, 6, 156, ST7735_WHITE);
+	ST7735_FillRect(122, 6, 6, 156, ST7735_WHITE);
+	ST7735_FillRect(6, 154, 116, 6, ST7735_WHITE);
+	ST7735_SetCursor(1,1);
+	ST7735_OutString("Configuration");
+	ST7735_SetCursor(1,3);
+	ST7735_OutString("A: Set Time");
+	ST7735_SetCursor(1,5);
+	ST7735_OutString("B: Set Date");
+	ST7735_SetCursor(1,7);
+	ST7735_OutString("C: Config. Sensors");
+	ST7735_SetCursor(1,9);
+	ST7735_OutString("D: Arm/Disarm Alarm");
+	ST7735_SetCursor(1,11);
+	ST7735_OutString("E: Set Pincode");
+	ST7735_SetCursor(1,13);
+	ST7735_OutString("F: Adjust Volume");
+}
+
+//Displays Alarm Event Log
+void ViewAlarmEventLog(void){
+	ST7735_FillScreen(0);
+	ST7735_SetCursor(0,0);
+	ST7735_OutString("Alarm Trigger Log");
+
+	LCDPrintTriggerLogEntry(TRIGGER_EVENT1, 0, 3, 1);
+	LCDPrintTriggerLogEntry(TRIGGER_EVENT2, 0, 5, 2);
+	LCDPrintTriggerLogEntry(TRIGGER_EVENT3, 0, 7, 3);
+	LCDPrintTriggerLogEntry(TRIGGER_EVENT4, 0, 9, 4);
+	LCDPrintTriggerLogEntry(TRIGGER_EVENT5, 0, 11, 5);
+	ST7735_SetCursor(0,15);
+	ST7735_OutString("[*] Go Back");
+}
+
+//Helper function: Prints Log info of alarm trigger event
+//Params: Trigger = log string, [x,y] = cursor start, n = list index
+void LCDPrintTriggerLogEntry(const int Trigger, int x, int y, int n){
+	char * Trigger_Addr = Trigger;
+	int i;
+	for(i = 0; i < 19; i++){
+		if( Trigger_Addr[i] < 32 || Trigger_Addr[i] > 126){
+			return;
+		}
 	}
-	ScrollLine[i] = NULL;
-
-	int j = 0;
-	while( j <  20){
-		ST7735_SetCursor(0,3);
-		ST7735_OutString(ScrollLine);
-		for(i = 20; i > 0; i--){
-			ScrollLine[i] = ScrollLine[i-1];
-		}
-		ScrollLine[0] = ' ';
-		ST7735_SetCursor(0,3);
-		ST7735_OutString(ScrollLine);
-		SysTick_delay(100);
-		j++;
+	ST7735_SetCursor(x,y);
+	ST7735_OutUDec(n);
+	ST7735_OutString(": ");
+	for( i = 0; i < 17; i++){
+		ST7735_OutChar(Trigger_Addr[i]);
 	}
-
-	//Shifting Temp into ScrollDisplay array
-	Temp = RTCGet_Temp();
-	char TempCh[7];
-	TempCh[0] = (int)Temp/10 + 48;
-	TempCh[1] = (int)Temp%10 + 48;
-	TempCh[2] = '.';
-	TempCh[3] = (int)(((int)(Temp*100.0)%100)/10 + 48);
-	TempCh[4] = (int)(((int)(Temp*100.0)%100)%10 + 48);
-	TempCh[5] = ' ';
-	TempCh[6] = 'C';
-
-	j = 0;
-	while ( j < 26){
-		if( j < 7){
-			ScrollLine[0] = TempCh[6-j];
-		}
-		else{
-			ScrollLine[0] = ' ';
-		}
-		ST7735_SetCursor(0,3);
-		ST7735_OutString(ScrollLine);
-		SysTick_delay(100);
-		for(i = 20; i > 0; i--){
-			ScrollLine[i] = ScrollLine[i-1];
-		}
-		j++;
-	}
-
-	//Shifting Date into ScrollDisplay array
-	j = 0;
-	RTCReadTime();
-	RTCGet_Date(Date);
-	int n = 0;
-	while( n < 20 ){
-		if( Date[n] == NULL){
-			break;
-		}
-		n++;
-	}
-	j = 20 - n;
-	while ( j < 39){
-		if( j < 20){
-			ScrollLine[0] = Date[19-j];
-		}
-		else{
-			ScrollLine[0] = ' ';
-		}
-		SysTick_delay(100);
-		for(i = 20; i > 0; i--){
-			ScrollLine[i] = ScrollLine[i-1];
-		}
-		ST7735_SetCursor(0,3);
-		ST7735_OutString(ScrollLine);
-		j++;
+	ST7735_SetCursor(x,y+1);
+	ST7735_OutString("Source: ");
+	switch(Trigger_Addr[18]){
+		case 'D':
+		ST7735_OutString("Door");
+		break;
+		case 'W':
+		ST7735_OutString("Window");
+		break;
+		case 'P':
+		ST7735_OutString("Motion");
+		break;
+		case 'T':
+		ST7735_OutString("Fire");
+		break;
 	}
 }
 
+//Displays Alarm Event Log
+void ViewAlarmArmLog(void){
+	ST7735_FillScreen(0);
+	ST7735_SetCursor(0,0);
+	ST7735_OutString("Arm/Disarm Log");
+
+	LCDPrintAlarmArmLogEntry(ARM_EVENT1, 0, 3, 1);
+	LCDPrintAlarmArmLogEntry(ARM_EVENT2, 0, 5, 2);
+	LCDPrintAlarmArmLogEntry(ARM_EVENT3, 0, 7, 3);
+	LCDPrintAlarmArmLogEntry(ARM_EVENT4, 0, 9, 4);
+	LCDPrintAlarmArmLogEntry(ARM_EVENT5, 0, 11, 5);
+	ST7735_SetCursor(0,15);
+	ST7735_OutString("[*] Go Back");
+}
+
+//Helper function to ViewAlarmArmLog. Prints out last 5 arm/disarm events
+void LCDPrintAlarmArmLogEntry(const int FlashLogAddress,int x, int y, int n){
+	char * Event_Addr = FlashLogAddress;
+	int i;
+	for(i = 0; i < 19; i++){
+		if( Event_Addr[i] < 32 || Event_Addr[i] > 126){
+			return;
+		}
+	}
+	ST7735_SetCursor(x,y);
+	ST7735_OutUDec(n);
+	ST7735_OutString(": ");
+	for( i = 0; i < 17; i++){
+		ST7735_OutChar(Event_Addr[i]);
+	}
+	ST7735_SetCursor(x,y+1);
+	ST7735_OutString("Action: ");
+	switch(Event_Addr[18]){
+		case 'A':
+		ST7735_OutString("Arm");
+		break;
+		case 'D':
+		ST7735_OutString("Disarm");
+		break;
+	}
+}
+
+//Scrolls Time/Date/Temp below home-screen banner
+void LCDScrollDisplay(void){
+//	char ScrollLine[21];
+//	char Time[8];
+//	char Date[20];
+//	float Temp;
+//	int i = 0;
+//
+//	RTCReadTime();
+//	ST7735_FillScreen(0); //Fill bkgd black
+//	ST7735_DrawBitmap(0,27,Clouds,128,28); //Draw clouds top
+//	RTCGet_Time(Time); //Get current time
+//	ST7735_SetCursor(0,3);
+//	while( Time[i] != NULL){
+//		ScrollLine[i] = Time[i];
+//		i++;
+//	}
+//	ScrollLine[i] = NULL;
+//
+//	int j = 0;
+//	while( j <  20){
+//		ST7735_SetCursor(0,3);
+//		ST7735_OutString(ScrollLine);
+//		for(i = 20; i > 0; i--){
+//			ScrollLine[i] = ScrollLine[i-1];
+//		}
+//		ScrollLine[0] = ' ';
+//		ST7735_SetCursor(0,3);
+//		ST7735_OutString(ScrollLine);
+//		delay_ms(100);
+//		j++;
+//	}
+//
+//	//Shifting Temp into ScrollDisplay array
+//	Temp = RTCGet_Temp();
+//	char TempCh[7];
+//	TempCh[0] = (int)Temp/10 + 48;
+//	TempCh[1] = (int)Temp%10 + 48;
+//	TempCh[2] = '.';
+//	TempCh[3] = (int)(((int)(Temp*100.0)%100)/10 + 48);
+//	TempCh[4] = (int)(((int)(Temp*100.0)%100)%10 + 48);
+//	TempCh[5] = ' ';
+//	TempCh[6] = 'C';
+//
+//	j = 0;
+//	while ( j < 26){
+//		if( j < 7){
+//			ScrollLine[0] = TempCh[6-j];
+//		}
+//		else{
+//			ScrollLine[0] = ' ';
+//		}
+//		ST7735_SetCursor(0,3);
+//		ST7735_OutString(ScrollLine);
+//		delay_ms(100);
+//		for(i = 20; i > 0; i--){
+//			ScrollLine[i] = ScrollLine[i-1];
+//		}
+//		j++;
+//	}
+//
+//	//Shifting Date into ScrollDisplay array
+//	j = 0;
+//	RTCReadTime();
+//	RTCGet_Date(Date);
+//	int n = 0;
+//	while( n < 20 ){
+//		if( Date[n] == NULL){
+//			break;
+//		}
+//		n++;
+//	}
+//	j = 20 - n;
+//	while ( j < 39){
+//		if( j < 20){
+//			ScrollLine[0] = Date[19-j];
+//		}
+//		else{
+//			ScrollLine[0] = ' ';
+//		}
+//		delay_ms(100);
+//		for(i = 20; i > 0; i--){
+//			ScrollLine[i] = ScrollLine[i-1];
+//		}
+//		ST7735_SetCursor(0,3);
+//		ST7735_OutString(ScrollLine);
+//		j++;
+//	}
+}
+
+//Flashes Alarm Indicator on Lower Screen in Red
 void LCDFlashAlarm(uint8_t FlashSeconds){
 	int i, x;
 	int n = 0;
@@ -1672,13 +1816,13 @@ void LCDFlashAlarm(uint8_t FlashSeconds){
 	char A[] = "*ALARM*";
 	while( n < FlashSeconds){
 		ST7735_FillRect(0, 119, 128, 40, ST7735_RED);
-		SysTick_delay(500);
+		delay_ms(500);
 		x = 22;
 		for(i = 0; i < 7; i++){
 			ST7735_DrawChar(x, y, A[i], ST7735_YELLOW, 0, 2);
 			x += 12;
 		}
-		SysTick_delay(500);
+		delay_ms(500);
 		n++;
 	}
 }
@@ -1686,59 +1830,5 @@ void LCDFlashAlarm(uint8_t FlashSeconds){
 void LCDStartup(void){
 	Output_Init();
 	ST7735_DrawBitmap(0,159,GuardDog,128,160);
-	SysTick_delay(3000);
+	delay_ms(3000);
 }
-
-//Initializes Systick timer
-void SysTick_init(void){
-	SysTick->CTRL &= ~0x0001; //disable timer
-	SysTick->CTRL |= 0x0004;  //Set clock source
-	SysTick->CTRL &= ~0x0002; //Disable interrupt
-}
-
-//Creates delay of Delay_ms, max = 349ms
-void SysTick_delay(uint16_t Delay_ms){
-	uint8_t MaxRepeats = Delay_ms / 349;
-	uint16_t FinalTime = Delay_ms % 349;
-	SysTick->CTRL &= ~0x0001; //Disable Systick
-	SysTick->VAL = 0; //clear current value
-	SysTick->LOAD = 349*48000 - 1; //set reload value in ms
-	SysTick->CTRL |= 0x0001; //enable Systick
-
-	int i = 0;
-	for(i = 0; i < MaxRepeats; i++){
-		SysTick->VAL = 0; //clear current value
-		while( (SysTick->CTRL & 0x00010000) == 0); //Wait until flag is set
-	}
-	SysTick->CTRL &= ~0x0001; //Disable Systick
-	SysTick->VAL = 0; //clear current value
-	SysTick->LOAD = FinalTime*48000; //set reload value in ms
-	SysTick->CTRL |= 0x0001; //enable Systick
-	while( (SysTick->CTRL & 0x00010000) == 0); //Wait until flag is set
-
-}
-
-//Set master clk to 48MHz, smclk to 12MHz
-void SetupClock48MHz(void){
-	//Attributed to Rob Bossemeyer
-	/* Configuring pins for peripheral/crystal usage */
-	MAP_GPIO_setAsPeripheralModuleFunctionOutputPin(GPIO_PORT_PJ,
-            GPIO_PIN3 | GPIO_PIN2, GPIO_PRIMARY_MODULE_FUNCTION);
-	MAP_GPIO_setAsOutputPin(GPIO_PORT_P1, GPIO_PIN0);
-	CS_setExternalClockSourceFrequency(32000,48000000);
-    /* Starting HFXT in non-bypass mode without a timeout. Before we start
-     * we have to change VCORE to 1 to support the 48MHz frequency */
-    MAP_PCM_setCoreVoltageLevel(PCM_VCORE1);
-    MAP_FlashCtl_setWaitState(FLASH_BANK0, 2);
-    MAP_FlashCtl_setWaitState(FLASH_BANK1, 2);
-    CS_startHFXT(false);  // false means that there are no timeouts set, will return when stable
-
-    /* Initializing MCLK to HFXT (effectively 48MHz) */
-    MAP_CS_initClockSignal(CS_MCLK, CS_HFXTCLK_SELECT, CS_CLOCK_DIVIDER_1);
-	MAP_CS_initClockSignal(CS_SMCLK, CS_HFXTCLK_SELECT, CS_CLOCK_DIVIDER_4);
-
-	int32_t SMCLKfreq = MAP_CS_getSMCLK(); // get SMCLK value to verify it was set to 12 MHz
-	int32_t MCLKfreq = MAP_CS_getMCLK(); // get MCLK value and verify it also
-}
-
-

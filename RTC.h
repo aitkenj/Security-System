@@ -1,8 +1,8 @@
 /*
  * RTC.h
- * Written By: Joshua Aitken
- * Date Created: 10/30/2016
- * Date Last Modified: 10/30/2016
+ * Written By: Chris Vanzomern
+ * Date Created: 11/20/2016
+ * Date Last Modified: 11/20/2016
  *
  * Requirements: -Pins 6.5, 6.4 are used for I2C
  * 				 -DCO clock is maintained at 24 MHz
@@ -14,23 +14,28 @@
 
 #include "driverlib.h"
 #include <stdio.h>
+#include <stddef.h>
 
- //Sets up I2C and assigns RTC slave address
-void I2CInit(void);
+#pragma once
 
-//Writes time input into RTC registers
-void RTCWrite(uint8_t Min, uint8_t Hour, uint8_t Date, uint8_t Month);
+typedef struct rtc_time
+{
+	int sec;
+	int min;
+	int hour;
+	int day_of_week;
+	int date;
+	int month;
+	int year;
+} rtc_time;
 
-//Reads time from RTC registers into RTC_registers
-void RTCReadTime(void);
+extern char const * const rtc_day_name[8];
 
-//Converts current time in RTC_registers from BCD to decimal & displays
-void RTCGet_Time(char Time[]);
+int rtc_gettime(struct rtc_time *result);
+int rtc_settime(struct rtc_time *time);
 
-//Converts date in RTC_registers to weekday and numerical display
-void RTCGet_Date(char Date[]);
+void rtc_gettemp(float *result);
 
-//Reads and displays temp in Celsius
-float RTCGet_Temp(void);
+void rtc_format(struct rtc_time *time, char *result, size_t length);
 
 #endif /* RTC_H_ */

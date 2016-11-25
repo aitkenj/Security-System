@@ -48,10 +48,14 @@ main.obj: /Users/joshuaaitken/workspace_v6_1_3/Security\ System/driverlib/msp432
 main.obj: /Users/joshuaaitken/workspace_v6_1_3/Security\ System/driverlib/msp432P4xx/wdt_a.h
 main.obj: ../RTC.h
 main.obj: /Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include/stdio.h
+main.obj: /Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include/stddef.h
 main.obj: ../Keypad.h
 main.obj: /Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include/stdio.h
 main.obj: ../Hall.h
 main.obj: /Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include/stdio.h
+main.obj: ../LCD.h
+main.obj: ../i2c_bus.h
+main.obj: /Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include/stddef.h
 
 ../main.c: 
 /Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include/stdio.h: 
@@ -101,7 +105,11 @@ main.obj: /Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include/s
 /Users/joshuaaitken/workspace_v6_1_3/Security\ System/driverlib/msp432P4xx/wdt_a.h: 
 ../RTC.h: 
 /Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include/stdio.h: 
+/Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include/stddef.h: 
 ../Keypad.h: 
 /Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include/stdio.h: 
 ../Hall.h: 
 /Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include/stdio.h: 
+../LCD.h: 
+../i2c_bus.h: 
+/Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include/stddef.h: 
