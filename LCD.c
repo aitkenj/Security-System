@@ -1720,92 +1720,117 @@ void LCDPrintAlarmArmLogEntry(const int FlashLogAddress,int x, int y, int n){
 
 //Scrolls Time/Date/Temp below home-screen banner
 void LCDScrollDisplay(void){
-//	char ScrollLine[21];
-//	char Time[8];
-//	char Date[20];
-//	float Temp;
-//	int i = 0;
-//
-//	RTCReadTime();
-//	ST7735_FillScreen(0); //Fill bkgd black
-//	ST7735_DrawBitmap(0,27,Clouds,128,28); //Draw clouds top
-//	RTCGet_Time(Time); //Get current time
-//	ST7735_SetCursor(0,3);
-//	while( Time[i] != NULL){
-//		ScrollLine[i] = Time[i];
-//		i++;
-//	}
-//	ScrollLine[i] = NULL;
-//
-//	int j = 0;
-//	while( j <  20){
-//		ST7735_SetCursor(0,3);
-//		ST7735_OutString(ScrollLine);
-//		for(i = 20; i > 0; i--){
-//			ScrollLine[i] = ScrollLine[i-1];
-//		}
-//		ScrollLine[0] = ' ';
-//		ST7735_SetCursor(0,3);
-//		ST7735_OutString(ScrollLine);
-//		delay_ms(100);
-//		j++;
-//	}
-//
+	char ScrollLine[21];
+	char Time[8];
+	char Date[8];
+	float Temp;
+	int i = 0;
+
+	i2c_init(); //Set bit rate and clock, etc
+	rtc_time CurrentTime; //Time result struct
+	rtc_time * Time_Addr = &CurrentTime;
+	ST7735_FillScreen(0); //Fill bkgd black
+	ST7735_DrawBitmap(0,27,Clouds,128,28); //Draw clouds top
+	ST7735_SetCursor(0,3);
+	//Get time result values into display array
+	ScrollLine[0] = (CurrentTime.hour / 10) + 48;
+	ScrollLine[1] = CurrentTime.hour % 10 + 48;
+	ScrollLine[2] =  ' ';
+	ScrollLine[3] = CurrentTime.min / 10 + 48;
+	ScrollLine[4] = CurrentTime.min % 10 + 48;
+	ScrollLine[5] = ' ';
+	ScrollLine[6] = CurrentTime.sec / 10 + 48;
+	ScrollLine[7] = CurrentTime.sec % 10 + 48;
+	ScrollLine[8] = '\0'; //Terminator
+
+	int j = 0; //counter through display array
+	while( j <  20){
+		ST7735_SetCursor(0,3);
+		ST7735_OutString(ScrollLine);
+		for(i = 20; i > 0; i--){
+			ScrollLine[i] = ScrollLine[i-1];
+		}
+		ScrollLine[0] = ' ';
+		delay_ms(100);
+		j++;
+	}
+
 //	//Shifting Temp into ScrollDisplay array
-//	Temp = RTCGet_Temp();
-//	char TempCh[7];
-//	TempCh[0] = (int)Temp/10 + 48;
-//	TempCh[1] = (int)Temp%10 + 48;
-//	TempCh[2] = '.';
-//	TempCh[3] = (int)(((int)(Temp*100.0)%100)/10 + 48);
-//	TempCh[4] = (int)(((int)(Temp*100.0)%100)%10 + 48);
-//	TempCh[5] = ' ';
-//	TempCh[6] = 'C';
-//
-//	j = 0;
-//	while ( j < 26){
-//		if( j < 7){
-//			ScrollLine[0] = TempCh[6-j];
-//		}
-//		else{
-//			ScrollLine[0] = ' ';
-//		}
-//		ST7735_SetCursor(0,3);
-//		ST7735_OutString(ScrollLine);
-//		delay_ms(100);
-//		for(i = 20; i > 0; i--){
-//			ScrollLine[i] = ScrollLine[i-1];
-//		}
-//		j++;
-//	}
-//
+	float * Temp_Addr = &Temp; //Temp result pointer
+	rtc_gettemp(Temp_Addr); //read/Get current temp
+	char TempCh[7]; //Temp display chars
+	TempCh[0] = (int)Temp/10 + 48;
+	TempCh[1] = (int)Temp%10 + 48;
+	TempCh[2] = '.';
+	TempCh[3] = (int)(((int)(Temp*100.0)%100)/10 + 48);
+	TempCh[4] = (int)(((int)(Temp*100.0)%100)%10 + 48);
+	TempCh[5] = ' ';
+	TempCh[6] = 'C';
+
+	j = 0;
+	while ( j < 27){
+		if( j < 7){
+			ScrollLine[0] = TempCh[6-j]; //shift in temp
+		}
+		else{
+			ScrollLine[0] = ' ';
+		}
+		ST7735_SetCursor(0,3);
+		ST7735_OutString(ScrollLine);
+		delay_ms(100); //delay before shift
+		//Shift display chars
+		for(i = 20; i > 0; i--){
+			ScrollLine[i] = ScrollLine[i-1];
+		}
+		j++;
+	}
+
 //	//Shifting Date into ScrollDisplay array
-//	j = 0;
-//	RTCReadTime();
-//	RTCGet_Date(Date);
-//	int n = 0;
-//	while( n < 20 ){
-//		if( Date[n] == NULL){
-//			break;
-//		}
-//		n++;
-//	}
-//	j = 20 - n;
-//	while ( j < 39){
-//		if( j < 20){
-//			ScrollLine[0] = Date[19-j];
-//		}
-//		else{
-//			ScrollLine[0] = ' ';
-//		}
-//		delay_ms(100);
-//		for(i = 20; i > 0; i--){
-//			ScrollLine[i] = ScrollLine[i-1];
-//		}
-//		ST7735_SetCursor(0,3);
-//		ST7735_OutString(ScrollLine);
-//		j++;
-//	}
+	rtc_gettime(Time_Addr); //Get time/date result
+
+	int n = 0;
+	while( n < 10){ //Count chars in day of week
+		if(rtc_day_name[CurrentTime.day_of_week][n] == NULL)
+			break;
+		n++;
+	}
+	while( n > 0){
+		//Shift in chars of weekday name
+		ScrollLine[0] = rtc_day_name[CurrentTime.day_of_week][n-1];
+		ST7735_SetCursor(0,3);
+		ST7735_OutString(ScrollLine);
+		delay_ms(100); //shift delay
+		for(i = 20; i > 0; i--){
+			ScrollLine[i] = ScrollLine[i-1]; //shift array by 1
+		}
+		n--;
+	}
+	//Get Date chars
+	Date[0] = (CurrentTime.year) % 10 + 48;
+	Date[1] = (CurrentTime.year % 100) / 10 + 48;
+	Date[2] =  ' ';
+	Date[3] = CurrentTime.date % 10 + 48;
+	Date[4] = CurrentTime.date / 10 + 48;
+	Date[5] = ' ';
+	Date[6] = CurrentTime.month % 10 + 48;
+	Date[7] = CurrentTime.month / 10 + 48;
+	n = 0;
+	delay_ms(100); //shift delay
+	while( n < 29){ //Shift in date
+		if( n < 9 && n > 0){
+			ScrollLine[0] = Date[n-1];
+		}
+		else{
+			ScrollLine[0] = ' ';
+		}
+		ST7735_SetCursor(0,3);
+		ST7735_OutString(ScrollLine); //Output current array
+		delay_ms(100);
+		for(i = 20; i > 0; i--){
+			ScrollLine[i] = ScrollLine[i-1];
+		}
+		n++;
+	}
 }
 
 //Flashes Alarm Indicator on Lower Screen in Red

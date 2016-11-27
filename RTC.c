@@ -198,6 +198,7 @@ int rtc_settime(struct rtc_time *time)
 
 
 // this function is garbage...
+//Re: This function seems to work fine.
 void rtc_gettemp(float* temperature)
 {
 	// receive control and status registers from RTC
@@ -208,7 +209,6 @@ void rtc_gettemp(float* temperature)
 	{
 		rtc_read_registers();
 	}
-	rtc_read_registers();
 
 	// shift the temperature bits into the correct locations
 	int raw_temperature = (rtc_registers[RTC_MEM_TEMP] << 2) + (rtc_registers[RTC_MEM_TEMP + 1] >> 6);

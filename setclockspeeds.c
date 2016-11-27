@@ -2,9 +2,11 @@
  * setclockspeeds.c
  * Written By: Chris Vanzomern
  * Date Created: 11/20/2016
- * Date Last Modified: 11/20/2016
+ * Date Last Modified: 11/27/2016
  *
- * Requirements:
+ * Requirements: -External clock sources, HFXT and LFXT are available
+ * 				 -CPU can run at 48 MHz with set_main_clocks()
+ * 				 -delay_ms() and delay_us() assume 48 MHz master clk
  */
 
 #include "setclockspeeds.h"
@@ -48,6 +50,16 @@ void set_main_clocks()
 	SysTick->LOAD = 0x00FFFFFF;
 	SysTick->VAL = 0;
 	SysTick->CTRL = 0x5;
+}
+
+//Method stub for setting ACLK
+void set_wdt_clocks(void){
+	//TODO: Complete set-up of ACLK
+}
+
+//Method stub for clock used for i2s
+void set_i2s_audio_clock(void){
+	//TODO
 }
 
 //Initializes Systick timer: used by delay_us & delay_ms

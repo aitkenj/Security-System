@@ -12,15 +12,15 @@
 //#include "Bell.h"
 #include "i2c_bus.h"
 
-
 void SystemReset(void);
 
 void main(){
 	//SystemReset():
 //	InitHallEffect();
-//	SysTick_Init();
+	set_main_clocks();
+	SysTick_init();
 //	Init_Keypad();
-//	LCDStartup();
+	Output_Init();
 //
 //	uint16_t DoorStatus;
 ////	DoorStatus = GetDoorStatus();
@@ -34,21 +34,8 @@ void main(){
 //		LCDScrollDisplay(); //Code needs modifying to interrupt scroll with key input
 //	}
 	//Alarm Handling Code
-
-	i2c_init(); //Also calls set_main_clocks();
-	Output_Init();
-	rtc_time Time1 = { .hour = 12,
-					   .min = 12,
-					   .sec = 12,
-					   .day_of_week = 1,
-					   .date = 23,
-					   .month = 11,
-					   .year = 2016 };
-	struct rtc_time * result = &Time1;
-	rtc_settime(result);
-	rtc_gettime(result);
-	char Timeout[] = { (result->hour)/10+48,(result->hour)%10+48,':',(result->min)/10+48,(result->min)%10+48,':',(result->sec)/10+48,(result->sec)%10+48};
-	ST7735_OutString(Timeout);
+	ST7735_FillScreen(0);
+	LCDScrollDisplay();
 }
 
 
