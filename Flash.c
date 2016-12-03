@@ -2,9 +2,21 @@
  * Flash.c
  * Written By: Joshua Aitken
  * Date Created: 11/20/2016
- * Date Last Modified: 11/20/2016
+ * Date Last Modified: 12/1/2016
  *
- * Requirements:
+ * Requirements: -Must include Flash.h, msp.h, driverlib.h
+ * 				 -Memory Location must be Flash override mailbox @ Bank 0, Sector 0
+ * 				 -Alarm Trigger Log info stored in 0x000200000 - 0x000200050 (see .h file)
+ * 				 -Alarm Event Log info stored in 0x000200064 - 0x0002000B4
+ * 				 -Alarm event/trigger info stored as ASCII sequence of chars as "hh:mm:ss MM/DD/YY S"
+ * 				 -'S' character of trigger event 19th info data element is source:
+ * 				 	->'D' = Door
+ * 				 	->'W' = Window
+ * 				 	->'P' = Motion Sensor
+ * 				 	->'T' = Fire (Temp Sensor)
+ * 				 -'S' char of arm/disarm event 19th info data element is action type:
+ * 				 	->'A' = Arm
+ * 				 	=>'D' = Disarm
  */
 
 #include "Flash.h"

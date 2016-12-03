@@ -32,10 +32,17 @@ typedef struct rtc_time
 extern char const * const rtc_day_name[8];
 
 int rtc_gettime(struct rtc_time *result);
+
 int rtc_settime(struct rtc_time *time);
 
 void rtc_gettemp(float *result);
 
 void rtc_format(struct rtc_time *time, char *result, size_t length);
+
+void EnableFireSensor(void);
+
+void DisableFireSensor(void);
+
+int IsFireSensorEnabled(void);
 
 #endif /* RTC_H_ */

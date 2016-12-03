@@ -52,6 +52,7 @@ LCD.obj: /Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include/st
 LCD.obj: /Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include/stddef.h
 LCD.obj: ../Flash.h
 LCD.obj: ../setclockspeeds.h
+LCD.obj: ../DoorLock.h
 
 ../LCD.c: 
 /Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include/stdio.h: 
@@ -105,3 +106,4 @@ LCD.obj: ../setclockspeeds.h
 /Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include/stddef.h: 
 ../Flash.h: 
 ../setclockspeeds.h: 
+../DoorLock.h: 

@@ -7,6 +7,7 @@ CMD_SRCS += \
 ../msp432p401r.cmd 
 
 C_SRCS += \
+../DoorLock.c \
 ../Flash.c \
 ../Hall.c \
 ../Keypad.c \
@@ -20,6 +21,7 @@ C_SRCS += \
 ../system_msp432p401r.c 
 
 C_DEPS += \
+./DoorLock.d \
 ./Flash.d \
 ./Hall.d \
 ./Keypad.d \
@@ -33,6 +35,7 @@ C_DEPS += \
 ./system_msp432p401r.d 
 
 OBJS += \
+./DoorLock.obj \
 ./Flash.obj \
 ./Hall.obj \
 ./Keypad.obj \
@@ -46,6 +49,7 @@ OBJS += \
 ./system_msp432p401r.obj 
 
 OBJS__QUOTED += \
+"DoorLock.obj" \
 "Flash.obj" \
 "Hall.obj" \
 "Keypad.obj" \
@@ -59,6 +63,7 @@ OBJS__QUOTED += \
 "system_msp432p401r.obj" 
 
 C_DEPS__QUOTED += \
+"DoorLock.d" \
 "Flash.d" \
 "Hall.d" \
 "Keypad.d" \
@@ -72,6 +77,7 @@ C_DEPS__QUOTED += \
 "system_msp432p401r.d" 
 
 C_SRCS__QUOTED += \
+"../DoorLock.c" \
 "../Flash.c" \
 "../Hall.c" \
 "../Keypad.c" \

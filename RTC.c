@@ -7,15 +7,16 @@
  * Requirements: -Pins 6.5, 6.4 are used for I2C
  * 				 -DCO clock is maintained at 24 MHz
  * 				 -Output prints to regular terminal
+ * 				 -include rtc.h, stddef.h, driverlib.h, setclockspeeds.h, flash.h
  */
 
 #include "RTC.h"
-
 #include <stddef.h>
 #include "driverlib.h"
 
 //#include "i2c_bus.h"
 #include "setclockspeeds.h"
+//#include "flash.h"
 
 // format string used to convert between a struct rtc_time and a string
 #define RTC_FORMAT_STRING "%s, %04d-%02d-%02d %02d:%02d:%02d"
@@ -49,7 +50,7 @@
 // Nobody using this is a time traveler.
 #define RTC_STARTING_YEAR 2000
 
-
+int FireSensorConfig = 1; //Fire Sensor on/off
 // The RTC uses binary-coded decimal.
 // This format has no benefit on the
 // system we're using, and it breaks
@@ -246,4 +247,15 @@ void rtc_format(struct rtc_time *time, char* text_buf, size_t length)
 				time->sec
 				);
 	}
+}
+
+void EnableFireSensor(void){
+	FireSensorConfig = 1;
+}
+void DisableFireSensor(void){
+	FireSensorConfig = 0;
+}
+
+int IsFireSensorEnabled(void){
+	return FireSensorConfig;
 }

@@ -56,6 +56,7 @@ main.obj: /Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include/s
 main.obj: ../LCD.h
 main.obj: ../i2c_bus.h
 main.obj: /Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include/stddef.h
+main.obj: ../DoorLock.h
 
 ../main.c: 
 /Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include/stdio.h: 
@@ -113,3 +114,4 @@ main.obj: /Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include/s
 ../LCD.h: 
 ../i2c_bus.h: 
 /Applications/ti/ccsv6/tools/compiler/ti-cgt-arm_15.12.1.LTS/include/stddef.h: 
+../DoorLock.h: 

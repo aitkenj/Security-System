@@ -2,7 +2,7 @@
  * LCD.c
  * Written By: Joshua Aitken
  * Date Created: 11/03/2016
- * Date Last Modified: 11/23/2016
+ * Date Last Modified: 12/1/2016
  *
  * Requirements:
  */
@@ -15,19 +15,31 @@
 #include "RTC.h"
 #include "Flash.h"
 #include "setclockspeeds.h"
+#include "DoorLock.h"
 
 void LCDStartup(void);
 void SysTick_init(void);
-void LCDHome(uint16_t AlarmStatus, uint16_t DoorStatus, uint16_t AlarmEvent, char AlarmSource[], char Date[], char Day[]);
-void LCDFlashAlarm(uint8_t FlashSeconds);
+void LCDHome(uint16_t AlarmStatus, uint16_t DoorStatus, uint16_t AlarmEvent, char AlarmSource[]);
+void LCDFlashAlarm(uint8_t FlashSeconds, char Source[], int ScrollTime);
 void LCDScrollDisplay(void);
 void LCDMainMenu(void);
 void LCDConfigurationMenu(void);
 void ViewAlarmEventLog(void);
 void ViewAlarmArmLog(void);
+void ViewSensorStatus(void);
 void LCDPrintTriggerLogEntry(const int Trigger, int x, int y, int n);
 void LCDPrintAlarmArmLogEntry(const int FlashLogAddress,int x, int y, int n);
+void ViewSetTime(void);
+void ViewSetDate(void);
+void ViewConfigureSensors(void);
+void ViewAlarmArmConfig(void);
+void ViewSetPincode(int PinDigit, char Prompt[21]);
+void ViewAdjustVolume(void);
 
+extern void TA1_0_IRQHandler(void);
+
+char ScrollTimeStr[30];
+char * Fmt_Time_Ptr = (char *)(&ScrollTimeStr[29]);
 
 const unsigned short GuardDog[] = {
  0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF, 0xFFFF,
@@ -1555,13 +1567,23 @@ const unsigned short Clouds[] = {
 //	ViewAlarmArmLog();
 //}
 
-void LCDHome(uint16_t AlarmStatus, uint16_t DoorStatus, uint16_t AlarmEvent, char AlarmSource[], char Date[], char Day[]){
+//Shows Home display, AlarmSource has no effect if AlarmEvent = 0
+//AlarmEvent triggers LCDFlashAlarm()
+void LCDHome(uint16_t AlarmStatus, uint16_t DoorStatus, uint16_t AlarmEvent, char AlarmSource[]){
 	ST7735_FillScreen(0);
 	ST7735_DrawBitmap(0,27,Clouds,128,28);
 	ST7735_SetCursor(0,3);
-	ST7735_OutString(Day);
-	ST7735_OutChar(' ');
-	ST7735_OutString(Date);
+	rtc_time Time;
+	rtc_time * Time_Addr = &Time;
+	rtc_gettime(Time_Addr);
+	char TimeStr[30];
+	rtc_format(Time_Addr, (char*)(&TimeStr),30);
+	int i = 0;
+	while( TimeStr[i] < 48 || TimeStr[i] > 57){
+		i++;
+	}
+	TimeStr[i+10] = NULL;
+	ST7735_OutString(TimeStr);
 	if( !AlarmEvent ){
 		ST7735_FillRect(0, 119, 128, 40, ST7735_BLUE);
 		if( AlarmStatus ){
@@ -1579,7 +1601,7 @@ void LCDHome(uint16_t AlarmStatus, uint16_t DoorStatus, uint16_t AlarmEvent, cha
 		}
 	}
 	else{
-		LCDFlashAlarm(3);
+		LCDFlashAlarm(3, AlarmSource, 1);
 	}
 }
 
@@ -1625,6 +1647,213 @@ void LCDConfigurationMenu(void){
 	ST7735_OutString("E: Set Pincode");
 	ST7735_SetCursor(1,13);
 	ST7735_OutString("F: Adjust Volume");
+}
+
+//TODO: Validate Functionality
+//Reads GPIO values once and displays status page
+void ViewSensorStatus(void){
+	ST7735_FillScreen(0);
+	ST7735_SetCursor(0,0);
+	ST7735_OutString("Sensor Status");
+	ST7735_SetCursor(0,2);
+	if( GetDoorStatus() == 1){
+		ST7735_OutString("Door: Open");
+	}
+	else{
+		ST7735_OutString("Door: Closed");
+	}
+	ST7735_SetCursor(0,4);
+	if( GetWindowStatus() == 1){
+		ST7735_OutString("Window: Open");
+	}
+	else{
+		ST7735_OutString("Window: Open");
+	}
+	ST7735_SetCursor(0,6);
+	float TFarenheit;
+	float * T_addr = &TFarenheit;
+	rtc_gettemp(T_addr);
+	TFarenheit = TFarenheit * 1.8 + 32.0;
+	ST7735_OutString("Temp(F): ");
+	ST7735_OutUDec((int)TFarenheit);
+	if( TFarenheit > 110.0 ){
+		ST7735_OutString(" *Fire!*");
+	}
+	ST7735_SetCursor(0,8);
+	if( P1IN & BIT5){
+		ST7735_OutString("Motion: Detected");
+	}
+	else{
+		ST7735_OutString("Motion: Not Detected");
+	}
+}
+
+//Displays Door Lock status & options to lock
+void ViewDoorLockConfiguration(void){
+	ST7735_FillScreen(0);
+	ST7735_SetCursor(0,0);
+	ST7735_OutString("Lock/Unlock Door");
+	ST7735_SetCursor(0,2);
+	ST7735_OutString("State: ");
+	if( GetLockStatus() ){
+		ST7735_OutString("Locked");
+		ST7735_SetCursor(0,4);
+		ST7735_OutString("Press 1 to UnLock");
+	}
+	else{
+		ST7735_OutString("Unlocked");
+		ST7735_SetCursor(0,4);
+		ST7735_OutString("Press 1 to UnLock");
+	}
+	ST7735_SetCursor(0,15);
+	ST7735_OutString("[*] Go Back");
+}
+
+//Displays Set Time Configuration Screen
+void ViewSetTime(void){
+	ST7735_FillScreen(0);
+	ST7735_SetCursor(0,0);
+	ST7735_OutString("Set Time");
+	ST7735_SetCursor(0,2);
+	rtc_time CurrentTime;
+	rtc_time * Time_Addr = &CurrentTime;
+	rtc_gettime(Time_Addr);
+	char Time[30];
+	char * Fmt_Time = &Time;
+	rtc_format(Time_Addr,Fmt_Time,30);
+	ST7735_OutString("Time: ");
+	int n = 0;
+	while( Time[n] < 48 || Time[n] > 57 ){
+		n++;
+	}
+	Time[n+10] = NULL;
+	ST7735_OutString((char *)(&Time[n]));
+	ST7735_SetCursor(0,4);
+	ST7735_OutString("Press 1 to set time");
+	ST7735_SetCursor(0,15);
+	ST7735_OutString("[*] Go Back");
+}
+
+//Displays Set Time Configuration Screen
+void ViewSetDate(void){
+	ST7735_FillScreen(0);
+	ST7735_SetCursor(0,0);
+	ST7735_OutString("Set Date");
+	ST7735_SetCursor(0,2);
+	rtc_time CurrentTime;
+	rtc_time * Time_Addr = &CurrentTime;
+	rtc_gettime(Time_Addr);
+	char Time[30];
+	char * Fmt_Time = &Time;
+	rtc_format(Time_Addr,Fmt_Time,30);
+	ST7735_OutString("Date: ");
+	int n = 0;
+	while( Time[n] < 48 || Time[n] > 57 ){
+		n++;
+	}
+	ST7735_OutString((char *)(&Time[n+11]));
+	ST7735_SetCursor(0,4);
+	ST7735_OutString("Press 1 to set date");
+	ST7735_SetCursor(0,15);
+	ST7735_OutString("[*] Go Back");
+}
+
+//Displays On/Off status of alarm sensors & prompts to change
+void ViewConfigureSensors(void){
+	ST7735_FillScreen(0);
+	ST7735_SetCursor(0,0);
+	ST7735_OutString("Configure Sensors");
+	ST7735_SetCursor(0,2);
+	ST7735_OutString("Window: ");
+	if( P1IE & GPIO_PIN6){
+		ST7735_OutString("On");
+	}
+	else{
+		ST7735_OutString("Off");
+	}
+	ST7735_SetCursor(0,3);
+	ST7735_OutString("Toggle: [1]");
+	ST7735_SetCursor(0,4);
+	ST7735_OutString("Door: ");
+	if( P1IE & GPIO_PIN7){
+		ST7735_OutString("On");
+	}
+	else{
+		ST7735_OutString("Off");
+	}
+	ST7735_SetCursor(0,5);
+	ST7735_OutString("Toggle: [2]");
+	ST7735_SetCursor(0,6);
+	ST7735_OutString("PIR: ");
+	if( P1IE & GPIO_PIN5 ){
+		ST7735_OutString("On");
+	}
+	else{
+		ST7735_OutString("Off");
+	}
+	ST7735_SetCursor(0,7);
+	ST7735_OutString("Toggle: [3]");
+	ST7735_SetCursor(0,8);
+	ST7735_OutString("Fire: ");
+	if( IsFireSensorEnabled() ){
+		ST7735_OutString("On");
+	}
+	else{
+		ST7735_OutString("Off");
+	}
+	ST7735_SetCursor(0,9);
+	ST7735_OutString("Toggle: [4]");
+	ST7735_SetCursor(0,15);
+	ST7735_OutString("[*] Go Back");
+}
+
+//Display view for arm/disarm alarm
+void ViewAlarmArmConfig(void){
+	ST7735_FillScreen(0);
+	ST7735_SetCursor(0,0);
+	ST7735_OutString("Alarm Arm/Disarm");
+	ST7735_SetCursor(0,2);
+	ST7735_OutString("State: ");
+	//TODO: Alarm Armed/Disarmed status
+//	if( GetAlarmStatus() ){
+//		ST7735_OutString("Armed");
+//	}
+//	else{
+//		ST7735_OutString("Disarmed");
+//	}
+	ST7735_SetCursor(0,4);
+	ST7735_OutString("Toggle State: [1]");
+	ST7735_SetCursor(0,15);
+	ST7735_OutString("[*] Go Back");
+}
+
+//Set Pincode view with prompt for new or old code, '*'/digit entered
+void ViewSetPincode(int PinDigit, char Prompt[21]){
+	ST7735_FillScreen(0);
+	ST7735_SetCursor(0,0);
+	ST7735_OutString("Set Pincode");
+	ST7735_SetCursor(0,2);
+	ST7735_OutString(Prompt);
+	for(int i = 0; i < PinDigit*12; i += 12){
+		ST7735_DrawChar(i+28, 50, '*', ST7735_BLUE, 0, 2);
+	}
+	ST7735_SetCursor(0,15);
+	ST7735_OutString("[*] Go Back");
+}
+
+//Displays current volume setting and prompts for new
+void ViewAdjustVolume(void){
+	ST7735_FillScreen(0);
+	ST7735_SetCursor(0,0);
+	ST7735_OutString("Adjust Volume");
+	ST7735_SetCursor(0,2);
+	ST7735_OutString("Volume: ");
+	//TODO: Speaker class get volume fn.
+	//ST7735_OutUDec(GetSpeakerVolume());
+	ST7735_SetCursor(0,4);
+	ST7735_OutString("Input Volume[1-9]:");
+	ST7735_SetCursor(0,15);
+	ST7735_OutString("[*] Go Back");
 }
 
 //Displays Alarm Event Log
@@ -1834,12 +2063,26 @@ void LCDScrollDisplay(void){
 }
 
 //Flashes Alarm Indicator on Lower Screen in Red
-void LCDFlashAlarm(uint8_t FlashSeconds){
+//Designed for Home Screen View
+void LCDFlashAlarm(uint8_t FlashSeconds, char Source[], int ScrollTime){
 	int i, x;
 	int n = 0;
 	int y = 129;
 	char A[] = "*ALARM*";
+	rtc_time Time;
+	rtc_time * Time_Addr = &Time;
+	ST7735_SetCursor(0,11);
+	ST7735_OutString("Trigger On: ");
+	ST7735_OutString(Source);
+	if( ScrollTime ){
+		SetupTA1();
+		Timer_A_startCounter(TIMER_A1_BASE,TIMER_A_UP_MODE); //Start Timer TA1
+	}
 	while( n < FlashSeconds){
+		if( ScrollTime ){
+			rtc_gettime(Time_Addr);
+			rtc_format(Time_Addr,(char*)(&ScrollTimeStr),30);
+		}
 		ST7735_FillRect(0, 119, 128, 40, ST7735_RED);
 		delay_ms(500);
 		x = 22;
@@ -1852,8 +2095,43 @@ void LCDFlashAlarm(uint8_t FlashSeconds){
 	}
 }
 
+//Helper fn for LCDFlashAlarm(), sets up TA1 to scrolltime on interrupt
+//Assumes ACLK at 8KHz and REF0 clk at 32 KHz,Does not start TA1
+void SetupTA1(void){
+	Interrupt_enableMaster(); //Enable interrupts
+	//Set-up Scroll 1 char right config
+	Timer_A_UpModeConfig TimerA1Config = {
+		TIMER_A_CLOCKSOURCE_ACLK,
+		TIMER_A_CLOCKSOURCE_DIVIDER_1,
+		800,
+		TIMER_A_TAIE_INTERRUPT_ENABLE,
+		TIMER_A_CCIE_CCR0_INTERRUPT_DISABLE,
+		TIMER_A_DO_CLEAR
+	};
+	Timer_A_configureUpMode(TIMER_A1_BASE,&TimerA1Config); //Config TA0 with period
+	//Register interrupt on OF for TA0
+	Timer_A_registerInterrupt(TIMER_A1_BASE,TIMER_A_CCRX_AND_OVERFLOW_INTERRUPT,TA1_0_IRQHandler);
+	Interrupt_enableInterrupt(INT_TA1_0); //Enable Scroll Interrupt Timer
+}
+
 void LCDStartup(void){
 	Output_Init();
 	ST7735_DrawBitmap(0,159,GuardDog,128,160);
 	delay_ms(3000);
+}
+
+
+void TA1_0_IRQHandler(void){
+	if( *(Fmt_Time_Ptr - 1) > 31 && *(Fmt_Time_Ptr - 1) < 123 ){
+		Fmt_Time_Ptr--;
+	}
+	else{
+		Fmt_Time_Ptr = (char *)(&ScrollTimeStr[29]);
+	}
+	ST7735_SetCursor(0,3);
+	ST7735_OutString(Fmt_Time_Ptr);
+	Timer_A_stopTimer(TIMER_A1_BASE);
+	Timer_A_clearTimer(TIMER_A1_BASE);
+	Timer_A_clearInterruptFlag(TIMER_A1_BASE);
+	Timer_A_startCounter(TIMER_A1_BASE,TIMER_A_UP_MODE);
 }

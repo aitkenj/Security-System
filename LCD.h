@@ -50,4 +50,19 @@ void LCDPrintTriggerLogEntry(const int Trigger, int x, int y, int n);
 //Helper function to ViewAlarmArmLog. Prints out last 5 arm/disarm events
 void LCDPrintAlarmArmLogEntry(const int FlashLogAddress,int x, int y, int n);
 
+//Displays Page to configure a new time
+void ViewSetTime(void);
+
+//Displays Page to configure a new date
+void ViewSetDate(void);
+
+//Display view for arm/disarm alarm
+void ViewAlarmArmConfig(void);
+
+//Set Pincode view with prompt for new or old code, '*'/digit entered
+void ViewSetPincode(int PinDigit, char Prompt[21]);
+
+//Displays current volume setting and prompts for new
+void ViewAdjustVolume(void);
+
 #endif /* LCD_H_ */

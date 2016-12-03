@@ -11,31 +11,39 @@
 //#include "LED.h"
 //#include "Bell.h"
 #include "i2c_bus.h"
+#include "DoorLock.h"
 
 void SystemReset(void);
 
 void main(){
 	//SystemReset():
+	i2c_init();
 //	InitHallEffect();
-	set_main_clocks();
-	SysTick_init();
-//	Init_Keypad();
+//	SysTick_init();
+////	Init_Keypad();
 	Output_Init();
-//
-//	uint16_t DoorStatus;
-////	DoorStatus = GetDoorStatus();
-//	char CurrentDate[8];
-//	RTCGet_Date(CurrentDate);
-//	char CurrentDay[10];
-////	RTCGet_Day(CurrentDay);
-//	LCDHome(0, DoorStatus, 0, NULL, CurrentDate, CurrentDay);
-//
-//	while(1){
-//		LCDScrollDisplay(); //Code needs modifying to interrupt scroll with key input
-//	}
-	//Alarm Handling Code
-	ST7735_FillScreen(0);
-	LCDScrollDisplay();
+	EnableDoorAlarm();
+////
+////	uint16_t DoorStatus;
+//////	DoorStatus = GetDoorStatus();
+////	char CurrentDate[8];
+////	RTCGet_Date(CurrentDate);
+////	char CurrentDay[10];
+//////	RTCGet_Day(CurrentDay);
+////	LCDHome(0, DoorStatus, 0, NULL, CurrentDate, CurrentDay);
+////
+////	while(1){
+////		LCDScrollDisplay(); //Code needs modifying to interrupt scroll with key input
+////	}
+//	//Alarm Handling Code
+//	ST7735_FillScreen(0);
+//	LCDScrollDisplay();
+	ViewAlarmArmConfig();
+	delay_ms(3000);
+	char Prompt[] = "Enter current pin:";
+	ViewSetPincode(3,Prompt);
+	delay_ms(3000);
+	ViewAdjustVolume();
 }
 
 

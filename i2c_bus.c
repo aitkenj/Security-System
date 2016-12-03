@@ -4,7 +4,8 @@
  * Date Created: 11/20/2016
  * Date Last Modified: 11/20/2016
  *
- * Requirements:
+ * Requirements: -Must include i2c_bus.h, driverlib.h, setclockspeeds.h
+ * 				 -Clk signal @ 3MHz, SMCLK, 100KBPS, module B
  */
 
 #include "i2c_bus.h"
